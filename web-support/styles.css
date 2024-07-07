@@ -116,6 +116,10 @@ code {
     .figure-clips {
         display: block !important;
     }
+
+    .title-column {
+        width: 50% !important;
+    }
 }
 
 .with-image-bg,
