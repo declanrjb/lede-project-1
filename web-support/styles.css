@@ -117,8 +117,8 @@ code {
         display: block !important;
     }
 
-    .title-column {
-        width: 50% !important;
+    .row {
+        height: 100px;
     }
 }
 
@@ -190,6 +190,12 @@ code {
 .column {
     float: left;
     width: 50%;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+.title-column {
+    float: left;
     padding: 10px;
     box-sizing: border-box;
 }
