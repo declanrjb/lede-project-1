@@ -1,3 +1,5 @@
+# script for scraping data from rotten tomatoes
+
 source('functions.R')
 
 url <- 'https://editorial.rottentomatoes.com/guide/best-movies-of-all-time/'
@@ -24,7 +26,7 @@ while ((counter <= 15000) && (length(seed_urls) > 0)) {
   seed_urls <- seed_urls[grepl('m/',seed_urls)]
   filtered_urls <- seed_urls[which(!file.exists(paste('meta_data/',name_from_url(seed_urls),sep='')))]
   message(length(filtered_urls))
-  if (counter > 11200) {
+  if (counter > 100) {
     seed_urls <- filtered_urls
   }
   seed_urls <- unique(seed_urls)

@@ -7,30 +7,36 @@ df <- read_csv('meta_data_all_backup.csv')
 
 # begin data cleaning
 
+# put title column at the front
 df <- df %>% select(Title,c(colnames(df)[colnames(df) != 'Title']))
 
+# create col for difference between critics and audience ratings
 df['Diff'] <- df$Critics - df$Audiences
 
+# inspect the highest negative differences
 df %>% arrange(Diff) %>% select(Title,Diff,Critics,Audiences,Synopsis)
 
+# calculate and write director gender using ssa method
 df['Director_Gender'] <- df %>% pull(Director) %>% first_name() %>% apply_gender(use_method = 'ssa')
 
+# check a sample by hand to verify that method of calculating genders
 gender_sample <- df[sample.int(dim(df)[1],size=100),] %>% select(Director,Director_Gender)
 
 # loss of 223 rows, 5% of data
 df <- df[which(lapply(str_split(df$Director,','),length) == 1),]
 
+# update the genders
 df['Director_Gender'] <- df %>% pull(Director) %>% first_name() %>% apply_gender(use_method = 'ssa')
 
-# loss of 239 rows, 6%
-#df <- df %>% filter(!is.na(Director_Gender))
-
+# clean ratings for consistency
 df['Rating_Cleaned'] <- str_squish(str_split_i(df$Rating," ",1))
 df$Rating_Cleaned <- str_squish(gsub(',','',df$Rating_Cleaned))
 
+# calculate and clean the first genders from the synopses
 df['First_Pronoun'] <- unlist(lapply(df$Synopsis,first_pronoun))
 df['First_Gender'] <- unlist(lapply(df$First_Pronoun,pronoun_to_gender))
 
+# drop unnecessary columns
 df <- df %>% 
   select(!`Sound Mix`) %>% 
   select(!`Aspect Ratio`) %>% 
@@ -40,6 +46,7 @@ df <- df %>%
   select(!Rating) %>%
   select(!`Release Date (Streaming)`)
 
+# get the first genre from each genre list
 df['Primary_Genre'] <- str_split_i(df$Genre,',',1)
 
 # release date is assumed to be theaters. streaming and dvd dropped
@@ -53,11 +60,10 @@ df <- df %>%
 #clean up
 df$Language <- str_squish(str_split_i(df$Language,'\\(',1))
 
-# unique(gsub('\\.','',gsub('[[:digit:]]+', '', df$US_Gross)))
-# df$US_Gross <- gsub('\\$','',df$US_Gross)
-
+# turn string style grosses into floats
 df$US_Gross <- millionize(df$US_Gross)
 
+# parse runtime and release date
 df$Runtime <- parse_date_time(df$Runtime,orders='HM')
 df['Runtime_Hours'] <- hour(df$Runtime) + (minute(df$Runtime) / 60)
 
@@ -126,7 +132,7 @@ dir_by_decade <- df %>%
   select(Decade,Director_Gender,US_Gross) %>% 
   arrange(Decade)
 
-write.csv(dir_by_decade,'dir_by_decade.csv',row.names=FALSE)
+write.csv(dir_by_decade,'output/dir_by_decade.csv',row.names=FALSE)
 
 dec_dodge_flour <- left_join(dir_by_decade %>% 
         filter(Director_Gender == 'male') %>% 
@@ -138,7 +144,7 @@ dec_dodge_flour <- left_join(dir_by_decade %>%
         dplyr::rename('Female_Gross' = 'US_Gross'),
       by='Decade')
 
-write.csv(dec_dodge_flour,'dec_dodge_flour.csv',row.names=FALSE)
+write.csv(dec_dodge_flour,'output/dec_dodge_flour.csv',row.names=FALSE)
 
 dir_by_genre <- df %>% 
   filter(year(Release_Date) >= 1980) %>% 
@@ -156,7 +162,7 @@ genre_dodge_flour <- left_join(dir_by_genre %>%
             dplyr::rename('Female_Gross' = 'US_Gross'),
           by='Primary_Genre')
 
-write.csv(genre_dodge_flour,'genre_dodge_flour.csv',row.names=FALSE)
+write.csv(genre_dodge_flour,'output/genre_dodge_flour.csv',row.names=FALSE)
 
 df %>% 
   meta_stat_summarize(c('Primary_Genre','Director_Gender'),'US_Gross',length,drop_na=TRUE) %>% 
@@ -179,7 +185,7 @@ dec_dir_flour <- left_join(dec_dir_df %>%
           by='Decade') %>%
   filter(Decade >= 1980)
 
-write.csv(dec_dir_flour,'dec_dir_flour.csv',row.names=FALSE)
+write.csv(dec_dir_flour,'output/dec_dir_flour.csv',row.names=FALSE)
 
 df %>% 
   meta_stat_summarize(c('Decade','First_Gender'),'Audiences',add_na_rm(mean),drop_na=TRUE) %>% 
@@ -192,7 +198,7 @@ pronoun_by_decade <- df %>%
   arrange(Decade) %>%
   filter(Decade >= 1980)
 
-write.csv(pronoun_by_decade,'pronoun_by_decade.csv',row.names=FALSE)
+write.csv(pronoun_by_decade,'output/pronoun_by_decade.csv',row.names=FALSE)
 
 pron_by_dec_flour <- left_join(pronoun_by_decade %>% 
                              filter(First_Gender == 'male') %>% 
@@ -205,7 +211,7 @@ pron_by_dec_flour <- left_join(pronoun_by_decade %>%
                            by='Decade') %>%
   filter(Decade >= 1980)
 
-write.csv(pron_by_dec_flour,'pron_by_dec_flour.csv',row.names=FALSE)
+write.csv(pron_by_dec_flour,'output/pron_by_dec_flour.csv',row.names=FALSE)
 
 dir_and_char <- df %>% 
   meta_stat_summarize(c('Director_Gender','First_Gender'),'US_Gross',add_na_rm(mean),drop_na=TRUE) %>% 
@@ -217,7 +223,7 @@ dir_and_char['Nicename'] <- paste('By ',dir_and_char$Director_Gender,' about ',d
 dir_and_char$Nicename <- gsub(' male',' men',dir_and_char$Nicename)
 dir_and_char$Nicename <- gsub(' female',' women',dir_and_char$Nicename)
 
-write.csv(dir_and_char,'dir_and_char.csv',row.names=FALSE)
+write.csv(dir_and_char,'output/dir_and_char.csv',row.names=FALSE)
 
 df %>% 
   meta_stat_summarize(c('Director_Gender','First_Gender'),'US_Gross',length,drop_na=TRUE) %>% 
@@ -229,4 +235,4 @@ beeswarm_df <- df %>% filter(year(Release_Date) >= 1980) %>%
   filter(!is.na(First_Gender)) %>%
   select(Title,Director,US_Gross,Critics,Audiences,Director_Gender,First_Gender)
 
-write.csv(beeswarm_df,'beeswarm_df.csv',row.names=FALSE)
+write.csv(beeswarm_df,'output/beeswarm_df.csv',row.names=FALSE)
